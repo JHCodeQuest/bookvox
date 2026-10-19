@@ -15,3 +15,6 @@ dist
 
 # Secrets - never commit
 PyPI-Recovery-Codes-*
+
+# Test fixture generated for test_cli (synthetic, no copyrighted content)
+!epub/mini.epub
