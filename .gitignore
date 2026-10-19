@@ -12,3 +12,6 @@ chapters.txt
 *.onnx
 dist
 .venv
+
+# Secrets - never commit
+PyPI-Recovery-Codes-*
