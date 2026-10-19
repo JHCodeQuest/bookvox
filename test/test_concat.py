@@ -34,3 +34,9 @@ class CreateM4bFilenamesTest(unittest.TestCase):
         create_m4b(chapters, book.name, b'', str(self.tmp))
         self.assertEqual(book.read_bytes(), BOOK_BYTES)
         self.assertGreater((self.tmp / 'Book.m4b').stat().st_size, 0)
+
+    def test_apostrophe_in_book_and_chapter_names(self):
+        book, chapters = self.make_book_and_chapters(
+            "Magician's Guild.epub", ["Magician's Guild_chapter_1.wav", "Magician's Guild_chapter_2.wav"])
+        create_m4b(chapters, book.name, b'', str(self.tmp))
+        self.assertGreater((self.tmp / "Magician's Guild.m4b").stat().st_size, 0)
