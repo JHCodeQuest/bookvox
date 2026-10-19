@@ -9,7 +9,8 @@ maintainers = [
     { name = "Joseph", email = "jkhassan95@gmail.com" }
 ]
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "ebooklib (>=0.18,<0.19)",
