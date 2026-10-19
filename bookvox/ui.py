@@ -10,6 +10,7 @@ import platform
 import subprocess
 import io
 import os
+import traceback
 import wx
 from wx.lib.newevent import NewEvent
 from wx.lib.scrolledpanel import ScrolledPanel
@@ -24,7 +25,8 @@ EVENTS = {
     'CORE_PROGRESS': NewEvent(),
     'CORE_CHAPTER_STARTED': NewEvent(),
     'CORE_CHAPTER_FINISHED': NewEvent(),
-    'CORE_FINISHED': NewEvent()
+    'CORE_FINISHED': NewEvent(),
+    'CORE_FAILED': NewEvent()
 }
 
 border = 5
@@ -46,6 +48,7 @@ class MainWindow(wx.Frame):
         self.Bind(EVENTS['CORE_CHAPTER_FINISHED'][1], self.on_core_chapter_finished)
         self.Bind(EVENTS['CORE_PROGRESS'][1], self.on_core_progress)
         self.Bind(EVENTS['CORE_FINISHED'][1], self.on_core_finished)
+        self.Bind(EVENTS['CORE_FAILED'][1], self.on_core_failed)
 
         self.create_menu()
         self.create_layout()
@@ -96,6 +99,14 @@ class MainWindow(wx.Frame):
     def on_core_finished(self, event):
         self.synthesis_in_progress = False
         self.open_folder_with_explorer(self.output_folder_text_ctrl.GetValue())
+
+    def on_core_failed(self, event):
+        # Undo what on_start disabled, so the user can fix the problem and try again.
+        self.synthesis_in_progress = False
+        self.start_button.Enable()
+        self.params_panel.Enable()
+        self.table.EnableCheckBoxes(True)
+        wx.MessageBox(f'Audiobook synthesis failed:\n{event.error}', 'Bookvox', wx.ICON_ERROR)
 
     def create_layout(self):
         # Panels layout looks like this:
@@ -571,8 +582,12 @@ class CoreThread(threading.Thread):
         self.params = params
 
     def run(self):
-        import core
-        core.main(**self.params, post_event=self.post_event)
+        import bookvox.core as core
+        try:
+            core.main(**self.params, post_event=self.post_event)
+        except Exception as e:
+            traceback.print_exc()
+            self.post_event('CORE_FAILED', error=str(e))
 
     def post_event(self, event_name, **kwargs):
         # eg. 'EVENT_CORE_PROGRESS' -> EventCoreProgress, EVENT_CORE_PROGRESS
