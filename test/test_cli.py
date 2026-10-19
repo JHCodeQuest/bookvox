@@ -6,7 +6,7 @@ from tempfile import NamedTemporaryFile
 
 class CliTest(unittest.TestCase):
     def cli(self, args):
-        cmd = f'cd .. && python -m audiblez.cli {args}'
+        cmd = f'cd .. && python -m bookvox.cli {args}'
         return os.popen(cmd).read()
 
     def test_help(self):

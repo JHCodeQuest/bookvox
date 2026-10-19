@@ -2,15 +2,15 @@
 import argparse
 import sys
 
-from audiblez.voices import voices, available_voices_str
+from bookvox.voices import voices, available_voices_str
 
 
 def cli_main():
     voices_str = ', '.join(voices)
     epilog = ('example:\n' +
-              '  audiblez book.epub -l en-us -v af_sky\n\n' +
+              '  bookvox book.epub -l en-us -v af_sky\n\n' +
               'to run GUI just run:\n'
-              '  audiblez-ui\n\n' +
+              '  bookvox-ui\n\n' +
               'available voices:\n' +
               available_voices_str)
     default_voice = 'af_sky'

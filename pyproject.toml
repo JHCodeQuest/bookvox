@@ -1,11 +1,15 @@
 [project]
-name = "audiblez"
-version = "0.4.9"
+name = "bookvox"
+version = "0.5.0"
 description = "Generate audiobooks from e-books (epub to wav/m4b)"
 authors = [
-    { name = "Claudio Santini", email = "hireclaudio@gmail.com" }
+    { name = "Joseph", email = "jkhassan95@gmail.com" }
+]
+maintainers = [
+    { name = "Joseph", email = "jkhassan95@gmail.com" }
 ]
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "ebooklib (>=0.18,<0.19)",
@@ -33,14 +37,13 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [project.urls]
-Homepage = "https://claudio.uk/posts/epub-to-audiobook.html"
-Documentation = "https://github.com/santinic/audiblez"
-Repository = "https://github.com/santinic/audiblez"
-Issues = "https://github.com/santinic/audiblez/issues"
+Repository = "https://github.com/JHCodeQuest/bookvox"
+Issues = "https://github.com/JHCodeQuest/bookvox/issues"
+"Upstream project" = "https://github.com/santinic/audiblez"
 
 [project.scripts]
-audiblez = "audiblez.cli:cli_main"
-audiblez-ui = "audiblez.ui:main"
+bookvox = "bookvox.cli:cli_main"
+bookvox-ui = "bookvox.ui:main"
 
 [tool.poetry.group.dev.dependencies]
 deptry = "^0.23.0"

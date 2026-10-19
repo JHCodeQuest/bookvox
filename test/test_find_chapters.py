@@ -1,7 +1,7 @@
 import unittest
 from ebooklib import epub
 
-from audiblez.core import find_document_chapters_and_extract_texts, find_good_chapters
+from bookvox.core import find_document_chapters_and_extract_texts, find_good_chapters
 
 
 class FindChaptersTest(unittest.TestCase):

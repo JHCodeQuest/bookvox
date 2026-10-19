@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# A simple wxWidgets UI for audiblez
+# A simple wxWidgets UI for bookvox
 
 import torch.cuda
 import numpy as np
@@ -17,7 +17,7 @@ from PIL import Image
 from tempfile import NamedTemporaryFile
 from pathlib import Path
 
-from audiblez.voices import voices, flags
+from bookvox.voices import voices, flags
 
 EVENTS = {
     'CORE_STARTED': NewEvent(),
@@ -382,7 +382,7 @@ class MainWindow(wx.Frame):
         print(f"Opening file: {file_path}")  # Do something with the filepath (e.g., parse the EPUB)
 
         from ebooklib import epub
-        from audiblez.core import find_document_chapters_and_extract_texts, find_good_chapters, find_cover
+        from bookvox.core import find_document_chapters_and_extract_texts, find_good_chapters, find_cover
         book = epub.read_epub(file_path)
         meta_title = book.get_metadata('DC', 'title')
         self.selected_book_title = meta_title[0][0] if meta_title else ''
@@ -483,7 +483,7 @@ class MainWindow(wx.Frame):
         button.Disable()
 
         def generate_preview():
-            import audiblez.core as core
+            import bookvox.core as core
             from kokoro import KPipeline
             pipeline = KPipeline(lang_code=lang_code)
             core.load_spacy()
