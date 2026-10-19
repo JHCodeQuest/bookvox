@@ -1,6 +1,6 @@
 [project]
 name = "bookvox"
-version = "0.5.1"
+version = "0.5.2"
 description = "Generate audiobooks from e-books (epub to wav/m4b)"
 authors = [
     { name = "Joseph", email = "jkhassan95@gmail.com" }
