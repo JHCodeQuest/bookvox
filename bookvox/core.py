@@ -325,7 +325,9 @@ def concat_wavs_with_ffmpeg(chapter_files, output_folder, filename):
     wav_list_txt = Path(output_folder) / filename.replace('.epub', '_wav_list.txt')
     with open(wav_list_txt, 'w') as f:
         for wav_file in chapter_files:
-            f.write(f"file '{wav_file}'\n")
+            # ffmpeg's concat demuxer resolves relative entries against the list file's folder,
+            # so a relative output folder would be applied twice. Use absolute paths.
+            f.write(f"file '{Path(wav_file).resolve()}'\n")
     concat_file_path = Path(output_folder) / filename.replace('.epub', '.tmp.mp4')
     # Use ffmpeg's built-in AAC encoder: libfdk_aac is non-free and missing from most ffmpeg builds.
     proc = subprocess.run([
