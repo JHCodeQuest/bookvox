@@ -56,6 +56,8 @@ jobs:
           python-version: "3.11"
       - name: Install winget
         uses: Cyberboss/install-winget@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Install wingetcreate
         run: winget install wingetcreate --disable-interactivity --accept-source-agreements
       - name: Install fmmpeg
