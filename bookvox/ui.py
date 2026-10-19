@@ -211,7 +211,7 @@ class MainWindow(wx.Frame):
                "Distributed under the MIT License.\n\n" +
                "by Claudio Santini 2025\nand many contributors.\n\n" +
                "https://claudio.uk\n\n")
-        wx.MessageBox(msg, "Audiblez")
+        wx.MessageBox(msg, "Bookvox")
 
     def create_right_panel(self, splitter_right):
         self.right_panel = wx.Panel(splitter_right)
@@ -601,7 +601,7 @@ class CoreThread(threading.Thread):
 def main():
     print('Starting GUI...')
     app = wx.App(False)
-    frame = MainWindow(None, "Audiblez - Generate Audiobooks from E-books")
+    frame = MainWindow(None, "Bookvox - Generate Audiobooks from E-books")
     frame.Show(True)
     frame.Layout()
     app.SetTopWindow(frame)
