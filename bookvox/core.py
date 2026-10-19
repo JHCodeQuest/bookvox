@@ -78,7 +78,6 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
 
     filename = Path(file_path).name
 
-    extension = '.epub'
     book = epub.read_epub(file_path)
     meta_title = book.get_metadata('DC', 'title')
     title = meta_title[0][0] if meta_title else ''
@@ -121,7 +120,7 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
         if max_chapters and i > max_chapters: break
         text = chapter.extracted_text
         xhtml_file_name = chapter.get_name().replace(' ', '_').replace('/', '_').replace('\\', '_')
-        chapter_wav_path = Path(output_folder) / filename.replace(extension, f'_chapter_{i}_{voice}_{xhtml_file_name}.wav')
+        chapter_wav_path = Path(output_folder) / f'{Path(filename).stem}_chapter_{i}_{voice}_{xhtml_file_name}.wav'
         chapter_wav_files.append(chapter_wav_path)
         if Path(chapter_wav_path).exists():
             print(f'File for chapter {i} already exists. Skipping')
@@ -322,13 +321,13 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
 
 
 def concat_wavs_with_ffmpeg(chapter_files, output_folder, filename):
-    wav_list_txt = Path(output_folder) / filename.replace('.epub', '_wav_list.txt')
+    wav_list_txt = Path(output_folder) / f'{Path(filename).stem}_wav_list.txt'
     with open(wav_list_txt, 'w') as f:
         for wav_file in chapter_files:
             # ffmpeg's concat demuxer resolves relative entries against the list file's folder,
             # so a relative output folder would be applied twice. Use absolute paths.
             f.write(f"file '{Path(wav_file).resolve()}'\n")
-    concat_file_path = Path(output_folder) / filename.replace('.epub', '.tmp.mp4')
+    concat_file_path = Path(output_folder) / f'{Path(filename).stem}.tmp.mp4'
     # Use ffmpeg's built-in AAC encoder: libfdk_aac is non-free and missing from most ffmpeg builds.
     proc = subprocess.run([
         'ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', wav_list_txt,
@@ -343,7 +342,7 @@ def concat_wavs_with_ffmpeg(chapter_files, output_folder, filename):
 
 def create_m4b(chapter_files, filename, cover_image, output_folder):
     concat_file_path = concat_wavs_with_ffmpeg(chapter_files, output_folder, filename)
-    final_filename = Path(output_folder) / filename.replace('.epub', '.m4b')
+    final_filename = Path(output_folder) / f'{Path(filename).stem}.m4b'
     chapters_txt_path = Path(output_folder) / "chapters.txt"
     print('Creating M4B file...')
 
