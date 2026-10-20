@@ -90,6 +90,7 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
         print(f'Found cover image {cover_maybe.file_name} in {cover_maybe.media_type} format')
 
     document_chapters = find_document_chapters_and_extract_texts(book)
+    toc_titles = find_toc_titles(book)
 
     if not selected_chapters:
         if pick_manually is True:
@@ -116,12 +117,14 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
     pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
 
     chapter_wav_files = []
+    chapter_titles = {}
     for i, chapter in enumerate(selected_chapters, start=1):
         if max_chapters and i > max_chapters: break
         text = chapter.extracted_text
         xhtml_file_name = chapter.get_name().replace(' ', '_').replace('/', '_').replace('\\', '_')
         chapter_wav_path = Path(output_folder) / f'{Path(filename).stem}_chapter_{i}_{voice}_{xhtml_file_name}.wav'
         chapter_wav_files.append(chapter_wav_path)
+        chapter_titles[chapter_wav_path] = toc_titles.get(chapter.get_name())
         if Path(chapter_wav_path).exists():
             print(f'File for chapter {i} already exists. Skipping')
             stats.processed_chars += len(text)
@@ -153,7 +156,7 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
             chapter_wav_files.remove(chapter_wav_path)
 
     if has_ffmpeg:
-        create_index_file(title, creator, chapter_wav_files, output_folder)
+        create_index_file(title, creator, chapter_wav_files, output_folder, chapter_titles)
         create_m4b(chapter_wav_files, filename, cover_image, output_folder)
         if post_event: post_event('CORE_FINISHED')
 
@@ -392,16 +395,39 @@ def probe_duration(file_name):
     return float(proc.stdout.strip())
 
 
-def create_index_file(title, creator, chapter_mp3_files, output_folder):
+def find_toc_titles(book):
+    """Map each chapter's file name to its title in the epub's table of contents."""
+    titles = {}
+
+    def walk(entries):
+        for entry in entries:
+            if isinstance(entry, (tuple, list)):
+                walk(entry)
+            else:
+                title = ' '.join((getattr(entry, 'title', '') or '').split())
+                href = (getattr(entry, 'href', '') or '').split('#')[0]
+                if title and href:
+                    titles.setdefault(href, title)
+
+    walk(book.toc)
+    return titles
+
+
+def escape_ffmetadata(text):
+    """ffmpeg's metadata file needs = ; # backslash and newline escaped with a backslash."""
+    return ''.join('\\' + c if c in '=;#\\\n' else c for c in text)
+
+
+def create_index_file(title, creator, chapter_mp3_files, output_folder, chapter_titles=None):
+    chapter_titles = chapter_titles or {}
     with open(Path(output_folder) / "chapters.txt", "w", encoding="utf-8") as f:
         f.write(f";FFMETADATA1\ntitle={title}\nartist={creator}\n\n")
         start = 0
-        i = 0
-        for c in chapter_mp3_files:
+        for i, c in enumerate(chapter_mp3_files, start=1):
             duration = probe_duration(c)
             end = start + (int)(duration * 1000)
-            f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start}\nEND={end}\ntitle=Chapter {i}\n\n")
-            i += 1
+            chapter_title = escape_ffmetadata(chapter_titles.get(c) or f'Chapter {i}')
+            f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start}\nEND={end}\ntitle={chapter_title}\n\n")
             start = end
 
 
