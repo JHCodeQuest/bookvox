@@ -1,0 +1,40 @@
+name: Tests
+
+# Runs the unit tests on pull requests and on pushes to main. (Not on every branch push: a PR branch
+# would otherwise run everything twice, once for the push and once for the pull request.)
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    strategy:
+      fail-fast: false  # report Linux and Windows separately
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install ffmpeg and espeak-ng
+        if: runner.os == 'Linux'  # the Windows runner already has ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg espeak-ng
+      - name: Install bookvox
+        run: pip install .
+      - name: Run the unit tests
+        working-directory: test
+        run: python -m unittest test_cli test_concat test_imports test_chapters -v
+      - name: Check the tests left no files behind in the repo
+        shell: bash
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git status --short
+            echo "The tests left files in the repo folder"
+            exit 1
+          fi
