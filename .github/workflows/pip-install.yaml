@@ -54,16 +54,6 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: "3.11"
-      - name: Install winget
-        uses: Cyberboss/install-winget@v1
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install wingetcreate
-        run: winget install wingetcreate --disable-interactivity --accept-source-agreements
-      - name: Install fmmpeg
-        run: winget install --id=Gyan.FFmpeg -e
-      - name: Install espeak-ng
-        run: winget install --id=eSpeak-NG.eSpeak-NG  -e
       - name: pip install bookvox
         run: pip install bookvox
       - name: check it runs as script
