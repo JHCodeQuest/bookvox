@@ -1,13 +1,29 @@
 import os
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+REPO = Path(__file__).resolve().parent.parent
+MINI_EPUB = REPO / 'epub' / 'mini.epub'
+
 
 class CliTest(unittest.TestCase):
-    def cli(self, args):
-        cmd = f'cd .. && python -m bookvox.cli {args}'
-        return os.popen(cmd).read()
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+
+    def cli(self, *args):
+        """Run the CLI inside a temporary folder, so output files never land in the repo."""
+        env = {**os.environ, 'PYTHONPATH': str(REPO), 'PYTHONIOENCODING': 'utf-8'}
+        result = subprocess.run(
+            [sys.executable, '-m', 'bookvox.cli', *map(str, args)],
+            cwd=self.tmp, env=env, capture_output=True, text=True, encoding='utf-8', errors='replace')
+        self.assertEqual(result.returncode, 0, result.stderr[-1000:])
+        return result.stdout
 
     def test_help(self):
         out = self.cli('--help')
@@ -15,18 +31,18 @@ class CliTest(unittest.TestCase):
         self.assertIn('usage:', out)
 
     def test_epub(self):
-        out = self.cli('epub/mini.epub')
+        out = self.cli(MINI_EPUB)
         self.assertIn('Found cover image', out)
         self.assertIn('Creating M4B file', out)
-        self.assertTrue(Path('../mini.m4b').exists())
-        self.assertTrue(Path('../mini.m4b').stat().st_size > 256 * 1024)
+        self.assertTrue((self.tmp / 'mini.m4b').exists())
+        self.assertTrue((self.tmp / 'mini.m4b').stat().st_size > 256 * 1024)
 
     def test_epub_voice_and_output_folder(self):
-        out = self.cli('epub/mini.epub -v af_sky -o test/prova')
+        out = self.cli(MINI_EPUB, '-v', 'af_sky', '-o', 'out/sub')  # relative to the temporary folder
         self.assertIn('Found cover image', out)
         self.assertIn('Creating M4B file', out)
-        self.assertTrue(Path('./prova/mini.m4b').exists())
-        self.assertTrue(Path('./prova/mini.m4b').stat().st_size > 256 * 1024)
+        self.assertTrue((self.tmp / 'out' / 'sub' / 'mini.m4b').exists())
+        self.assertTrue((self.tmp / 'out' / 'sub' / 'mini.m4b').stat().st_size > 256 * 1024)
 
     @unittest.skip('Not implemented yet')
     def test_md(self):
