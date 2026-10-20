@@ -40,3 +40,9 @@ class CreateM4bFilenamesTest(unittest.TestCase):
             "Magician's Guild.epub", ["Magician's Guild_chapter_1.wav", "Magician's Guild_chapter_2.wav"])
         create_m4b(chapters, book.name, b'', str(self.tmp))
         self.assertGreater((self.tmp / "Magician's Guild.m4b").stat().st_size, 0)
+
+    def test_failure_of_the_final_ffmpeg_step_is_reported(self):
+        book, chapters = self.make_book_and_chapters('Book.epub', ['a.wav', 'b.wav'])
+        # A corrupt cover makes the second ffmpeg call fail after the first one has succeeded.
+        with self.assertRaises(RuntimeError):
+            create_m4b(chapters, book.name, b'this is not an image', str(self.tmp))
