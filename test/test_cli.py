@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import subprocess
@@ -36,6 +37,12 @@ class CliTest(unittest.TestCase):
         self.assertIn('Creating M4B file', out)
         self.assertTrue((self.tmp / 'mini.m4b').exists())
         self.assertTrue((self.tmp / 'mini.m4b').stat().st_size > 256 * 1024)
+        self.assertEqual(self.chapter_titles(self.tmp / 'mini.m4b'), ['Chapter One', 'Chapter Two'])
+
+    def chapter_titles(self, m4b):
+        probe = subprocess.run(['ffprobe', '-v', 'error', '-show_chapters', '-of', 'json', str(m4b)],
+                               capture_output=True, text=True, encoding='utf-8', check=True)
+        return [chapter['tags']['title'] for chapter in json.loads(probe.stdout)['chapters']]
 
     def test_epub_voice_and_output_folder(self):
         out = self.cli(MINI_EPUB, '-v', 'af_sky', '-o', 'out/sub')  # relative to the temporary folder
