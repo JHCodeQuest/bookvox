@@ -53,6 +53,22 @@ and at the end it will produce a `book.m4b` file with the whole book you can lis
 audiobook player.
 It will only produce the `.m4b` file if you have `ffmpeg` installed on your machine.
 
+## Python versions
+
+bookvox supports Python 3.10 to 3.12.
+
+Python 3.13 is not officially supported yet. The PyPI releases of two dependencies, `kokoro` and `misaki`,
+still say `Requires-Python <3.13`, although their source already allows 3.13. Progress is tracked in
+[issue 15](https://github.com/JHCodeQuest/bookvox/issues/15). If you want to try it anyway:
+
+```bash
+pip install --ignore-requires-python bookvox
+```
+
+What has been tested: Windows 11 with Python 3.13.13: install, imports, the unit tests and a full conversion.
+Not tested: Linux and macOS, where a dependency of `misaki[en]` (`curated-tokenizers`) may have no Python 3.13
+wheels. The flag applies to every package, so pip will not warn you about other version problems.
+
 ## How to run the GUI
 
 The GUI is a simple graphical interface to use bookvox.
