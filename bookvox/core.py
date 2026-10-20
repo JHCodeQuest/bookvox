@@ -137,8 +137,10 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
             chapter_wav_files.remove(chapter_wav_path)
             continue
         if i == 1:
-            # add intro text
-            text = f'{title} – {creator}.\n\n' + text
+            # add intro text (counted into the total so progress cannot pass 100)
+            intro = f'{title} – {creator}.\n\n'
+            text = intro + text
+            stats.total_chars += len(intro)
         start_time = time.time()
         if post_event: post_event('CORE_CHAPTER_STARTED', chapter_index=chapter.chapter_index)
         audio_segments = gen_audio_segments(
@@ -208,6 +210,11 @@ def split_long_sentence(text, max_length=400):
     return parts
 
 
+def compute_progress(stats):
+    """Return overall progress in whole percent, never above 100."""
+    return min(100, stats.processed_chars * 100 // stats.total_chars)
+
+
 def gen_audio_segments(pipeline, text, voice, speed, stats=None, max_sentences=None, post_event=None):
     nlp = spacy.load('xx_ent_wiki_sm')
     nlp.add_pipe('sentencizer')
@@ -234,7 +241,7 @@ def gen_audio_segments(pipeline, text, voice, speed, stats=None, max_sentences=N
             audio_segments.append(audio)
         if stats:
             stats.processed_chars += len(sent_text)
-            stats.progress = stats.processed_chars * 100 // stats.total_chars
+            stats.progress = compute_progress(stats)
             stats.eta = strfdelta((stats.total_chars - stats.processed_chars) / stats.chars_per_sec)
             if post_event: post_event('CORE_PROGRESS', stats=stats)
             print(f'Estimated time remaining: {stats.eta}')
