@@ -19,6 +19,7 @@ import platform
 import re
 from io import StringIO
 from types import SimpleNamespace
+from urllib.parse import unquote
 from tabulate import tabulate
 from pathlib import Path
 from string import Formatter
@@ -405,7 +406,7 @@ def find_toc_titles(book):
                 walk(entry)
             else:
                 title = ' '.join((getattr(entry, 'title', '') or '').split())
-                href = (getattr(entry, 'href', '') or '').split('#')[0]
+                href = unquote((getattr(entry, 'href', '') or '').split('#')[0])  # ebooklib decodes chapter names, not TOC links
                 if title and href:
                     titles.setdefault(href, title)
 
@@ -420,8 +421,9 @@ def escape_ffmetadata(text):
 
 def create_index_file(title, creator, chapter_mp3_files, output_folder, chapter_titles=None):
     chapter_titles = chapter_titles or {}
-    with open(Path(output_folder) / "chapters.txt", "w", encoding="utf-8") as f:
-        f.write(f";FFMETADATA1\ntitle={title}\nartist={creator}\n\n")
+    # newline="\n": on Windows text mode would write \r\n, and the backslash that escapes a newline would escape the \r instead
+    with open(Path(output_folder) / "chapters.txt", "w", encoding="utf-8", newline="\n") as f:
+        f.write(f";FFMETADATA1\ntitle={escape_ffmetadata(title)}\nartist={escape_ffmetadata(creator)}\n\n")
         start = 0
         for i, c in enumerate(chapter_mp3_files, start=1):
             duration = probe_duration(c)
