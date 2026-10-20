@@ -414,7 +414,7 @@ class MainWindow(wx.Frame):
         cover = find_cover(book)
         if cover is not None:
             pil_image = Image.open(io.BytesIO(cover.content))
-            wx_img = wx.EmptyImage(pil_image.size[0], pil_image.size[1])
+            wx_img = wx.Image(pil_image.size[0], pil_image.size[1])
             wx_img.SetData(pil_image.convert("RGB").tobytes())
             cover_h = 200
             cover_w = int(cover_h * pil_image.size[0] / pil_image.size[1])
