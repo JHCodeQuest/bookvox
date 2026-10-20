@@ -22,9 +22,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install ffmpeg and espeak-ng
-        if: runner.os == 'Linux'  # the Windows runner already has ffmpeg
+      - name: Install ffmpeg and espeak-ng (Linux)
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y ffmpeg espeak-ng
+      - name: Install ffmpeg (Windows)  # the Windows runner image does not include it
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg --no-progress -y
+      - name: Check ffmpeg and ffprobe are available  # without them most tests would skip silently
+        shell: bash
+        run: |
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
       - name: Install bookvox
         run: pip install .
       - name: Run the unit tests
