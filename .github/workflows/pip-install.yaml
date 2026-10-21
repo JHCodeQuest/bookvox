@@ -60,7 +60,12 @@ jobs:
         run: bookvox --help
       - name: download test epub on windows using powershell
         run: Invoke-WebRequest -Uri https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub -OutFile book.epub
+      - name: Install ffmpeg  # the Windows runner image does not include it
+        run: choco install ffmpeg --no-progress -y
       - name: create audiobook
         run: bookvox book.epub
-      - name: check book.m4b file exists in current directory
-        run: Get-ChildItem -Path .\ -Filter *.m4b
+      - name: check an m4b was produced
+        run: |
+          $m4b = Get-ChildItem -Path .\ -Filter *.m4b | Where-Object { $_.Length -gt 0 }
+          if (-not $m4b) { Write-Error "No m4b was produced"; exit 1 }
+          $m4b | Format-Table Name, Length
