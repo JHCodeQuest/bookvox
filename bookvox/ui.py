@@ -91,8 +91,10 @@ class MainWindow(wx.Frame):
 
     def on_core_progress(self, event):
         # print('CORE_PROGRESS', event.progress)
-        self.progress_bar.SetValue(event.stats.progress)
-        self.progress_bar_label.SetLabel(f"Synthesis Progress: {event.stats.progress}%")
+        # The gauge range is 100: clamp so a value above it cannot raise a wx assertion
+        progress = min(100, event.stats.progress)
+        self.progress_bar.SetValue(progress)
+        self.progress_bar_label.SetLabel(f"Synthesis Progress: {progress}%")
         self.eta_label.SetLabel(f"Estimated Time Remaining: {event.stats.eta}")
         self.synth_panel.Layout()
 
