@@ -155,3 +155,28 @@ class MainChapterTitlesTest(unittest.TestCase):
         wanted = [c for c in find_document_chapters_and_extract_texts(epub.read_epub(str(path))) if c.get_name() in bodies]
         main(str(path), 'af_sky', False, 1.0, str(out), selected_chapters=wanted)
         self.assertEqual(m4b_tags(out / 'book.m4b')[1], ['First', 'Third'])
+
+
+class ProgressTest(unittest.TestCase):
+    def test_progress_never_goes_above_100(self):
+        """The intro ("title - author.") is narrated but was not in total_chars, so short chapters passed 100%."""
+        from bookvox.core import find_document_chapters_and_extract_texts, main
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        book = epub.EpubBook()  # a long title and a short chapter make the intro a big part of what is narrated
+        book.set_identifier('x'), book.set_title('A Rather Long Title For This Tiny Book'), book.set_language('en')
+        book.add_author('Some Author With A Long Name')
+        chapter = epub.EpubHtml(title='One', file_name='ch1.xhtml', lang='en')
+        chapter.content = '<p>A short chapter of text.</p>'
+        book.add_item(chapter)
+        book.toc = (epub.Link('ch1.xhtml', 'One', 'ch1.xhtml'),)
+        book.add_item(epub.EpubNcx()), book.add_item(epub.EpubNav())
+        book.spine = ['nav', chapter]
+        path = tmp / 'book.epub'
+        epub.write_epub(str(path), book)
+        seen = []
+        main(str(path), 'af_sky', False, 1.0, str(tmp),
+             selected_chapters=[c for c in find_document_chapters_and_extract_texts(epub.read_epub(str(path))) if c.get_name() == 'ch1.xhtml'],
+             post_event=lambda name, **kw: seen.append(kw['stats'].progress) if name == 'CORE_PROGRESS' else None)
+        self.assertTrue(seen)
+        self.assertLessEqual(max(seen), 100)
