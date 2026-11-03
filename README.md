@@ -11,7 +11,8 @@
 > This fork exists to fix outstanding bugs, restore support for current Python versions,
 > and land community contributions that were left open upstream.
 
-### v4 Now with Graphical interface, CUDA support, and many languages!
+Runs on Windows, Linux and macOS, with a graphical interface, CUDA support and many languages.
+See the [changelog](./CHANGELOG.md) for what has changed since upstream v0.4.9.
 
 ![Bookvox GUI on MacOSX](./imgs/mac.png)
 
@@ -29,8 +30,18 @@ On my M2 MacBook Pro, on CPU, it takes about 1 hour, at a rate of about 60 chara
 
 ## How to install the Command Line tool
 
-If you have Python 3 on your computer, you can install it with pip.
-You also need `espeak-ng` and `ffmpeg` installed on your machine:
+Windows is the best-tested platform. Install [Python](https://www.python.org/downloads/) 3.10 to 3.12 and `ffmpeg`,
+then bookvox. From a PowerShell window (the `choco` line needs [Chocolatey](https://chocolatey.org/install)):
+
+```powershell
+choco install ffmpeg
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install bookvox
+```
+
+You don't need to install `espeak-ng` separately on Windows (the Windows CI converts a book with only ffmpeg installed). Without Chocolatey, any other ffmpeg install works as
+long as `ffmpeg` is on your PATH. On Linux and Mac you also need `espeak-ng` and `ffmpeg` installed:
 
 ```bash
 sudo apt install ffmpeg espeak-ng                   # on Ubuntu/Debian 🐧
@@ -86,18 +97,10 @@ Then you can run the GUI with:
 bookvox-ui
 ```
 
-## How to run on Windows
+### The GUI on Windows
 
-After many trials, on Windows we recommend to install bookvox in a Python venv:
-
-1. Open a Windows terminal
-2. Create anew folder: `mkdir bookvox`
-3. Enter the folder: `cd bookvox`
-4. Create a venv: `python -m venv venv`
-5. Activate the venv: `.\venv\Scripts\Activate.ps1`
-6. Install the dependencies: `pip install bookvox pillow wxpython`
-7. Now you can run `bookvox` or `bookvox-ui`
-8. For Cuda support, you need to install Pytorch accordingly: https://pytorch.org/get-started/locally/
+In the venv from the install steps above, run `pip install pillow wxpython`, then `bookvox-ui`.
+For Cuda support, install PyTorch as described at https://pytorch.org/get-started/locally/.
 
 
 ## Speed
