@@ -12,6 +12,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: install ffmpeg, espeak-ng
         run: sudo apt-get update && sudo apt-get install ffmpeg espeak-ng --fix-missing
+      - name: Install CPU-only torch  # the default Linux torch pulls in CUDA libraries and fills the runner disk
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
       - name: Install dependencies
         run: pip install .
       - name: check it runs as script

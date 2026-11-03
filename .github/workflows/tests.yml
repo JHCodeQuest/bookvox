@@ -33,6 +33,9 @@ jobs:
         run: |
           ffmpeg -version | head -1
           ffprobe -version | head -1
+      - name: Install CPU-only torch (Linux)  # the default Linux torch pulls in CUDA libraries and fills the runner disk
+        if: runner.os == 'Linux'
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
       - name: Install bookvox
         run: pip install .
       - name: Run the unit tests
