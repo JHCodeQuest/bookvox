@@ -1,0 +1,45 @@
+name: Python 3.13 (experimental)
+
+# kokoro and misaki on PyPI still say "Requires-Python <3.13" (issues #1, #15), so this installs with
+# --ignore-requires-python. The job is allowed to fail: it tells us whether 3.13 works on Linux and macOS,
+# it does not gate merges. Look at the job's steps, not just the PR checks list, to see the result.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python-3-13:
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install ffmpeg and espeak-ng (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg espeak-ng
+      - name: Install ffmpeg and espeak-ng (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg espeak-ng
+      - name: Install CPU-only torch (Linux)  # the default Linux torch pulls in CUDA libraries and fills the runner disk
+        if: runner.os == 'Linux'
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Install bookvox, ignoring the Python version cap
+        run: pip install --ignore-requires-python .
+      - name: Check it runs as script
+        run: bookvox --help
+      - name: Download test epub
+        run: curl -fsSL -o book.epub https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
+      - name: Create audiobook
+        run: bookvox book.epub
+      - name: Check an m4b was produced
+        run: test -s book.m4b && ls -lah book.m4b
