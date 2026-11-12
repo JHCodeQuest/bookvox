@@ -403,7 +403,8 @@ def find_toc_titles(book):
                 if title and href:
                     titles.setdefault(href, title)
 
-    walk(book.toc)
+    # ebooklib returns a bare Link (not a list) when the TOC has a single entry
+    walk(book.toc if isinstance(book.toc, (tuple, list)) else [book.toc])
     return titles
 
 
