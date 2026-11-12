@@ -24,6 +24,14 @@ class EspeakLibraryTests(unittest.TestCase):
             set_espeak_library()
         self.assertTrue(os.path.samefile(EspeakWrapper.library(), self.original_library))
 
+    def test_removing_override_restores_bundled_library(self):
+        with patch.dict(os.environ, {"ESPEAK_LIBRARY": str(self.original_library)}):
+            set_espeak_library()
+        with patch.dict(os.environ, {}, clear=True):
+            with patch("espeakng_loader.get_library_path", return_value="bundled-library"):
+                set_espeak_library()
+        self.assertEqual(EspeakWrapper.library(), "bundled-library")
+
     def test_missing_override_fails(self):
         with patch.dict(os.environ, {"ESPEAK_LIBRARY": "missing-espeak-library"}):
             with self.assertRaisesRegex(RuntimeError, "ESPEAK_LIBRARY"):
