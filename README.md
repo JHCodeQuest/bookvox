@@ -64,6 +64,10 @@ and at the end it will produce a `book.m4b` file with the whole book you can lis
 audiobook player.
 It will only produce the `.m4b` file if you have `ffmpeg` installed on your machine.
 
+## eSpeak library configuration
+
+BookVox uses the eSpeak library and data configured by Misaki. To use a different library, set the `ESPEAK_LIBRARY` environment variable to the full path of the library file before starting BookVox. Remove the variable to restore the default. If the path is invalid, BookVox reports an error.
+
 ## Python versions
 
 bookvox supports Python 3.10 to 3.12.
