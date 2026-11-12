@@ -53,8 +53,8 @@ class ChapterTitlesTest(unittest.TestCase):
 
     def index_titles(self, files, chapter_titles=None):
         extra = () if chapter_titles is None else (chapter_titles,)
-        create_index_file('Book', 'Author', files, str(self.tmp), *extra)
-        text = (self.tmp / 'chapters.txt').read_text(encoding='utf-8')
+        path = create_index_file('Book', 'Author', files, str(self.tmp), *extra)
+        text = path.read_text(encoding='utf-8')
         return re.findall(r'^title=(.*)$', text, re.M)[1:]  # the first title= line is the book's own
 
     def test_chapter_numbers_start_at_one(self):
@@ -73,8 +73,8 @@ class ChapterTitlesTest(unittest.TestCase):
         # ffmpeg's metadata file needs = ; # backslash and newline escaped
         files = self.wavs(2)
         tricky = 'A=B; C #1 \\ D'
-        create_index_file('Book', 'Author', files, str(self.tmp), {files[0]: tricky, files[1]: 'Plain'})
-        create_m4b(files, 'Book.epub', b'', str(self.tmp))
+        path = create_index_file('Book', 'Author', files, str(self.tmp), {files[0]: tricky, files[1]: 'Plain'})
+        create_m4b(files, 'Book.epub', b'', str(self.tmp), path)
         self.assertEqual(m4b_chapter_titles(self.tmp / 'Book.m4b'), [tricky, 'Plain'])
 
     def test_titles_come_from_the_epub_toc(self):
@@ -117,9 +117,9 @@ class ChapterTitlesTest(unittest.TestCase):
 
     def test_newlines_and_special_characters_in_every_title_survive_in_the_m4b(self):
         files = self.wavs(2)
-        create_index_file('Part One\nThe Return', 'Auth;or=#', files, str(self.tmp),
+        path = create_index_file('Part One\nThe Return', 'Auth;or=#', files, str(self.tmp),
                           {files[0]: 'Line A\nLine B', files[1]: 'Plain'})
-        create_m4b(files, 'Book.epub', b'', str(self.tmp))
+        create_m4b(files, 'Book.epub', b'', str(self.tmp), path)
         tags, chapters = m4b_tags(self.tmp / 'Book.m4b')
         self.assertEqual(tags['title'], 'Part One\nThe Return')
         self.assertEqual(tags['artist'], 'Auth;or=#')

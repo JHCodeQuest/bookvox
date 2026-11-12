@@ -522,6 +522,11 @@ class MainWindow(wx.Frame):
         self.preview_threads.append(thread)
 
     def on_start(self, event):
+        final_m4b = Path(self.output_folder_text_ctrl.GetValue()) / f'{Path(self.selected_file_path).stem}.m4b'
+        if final_m4b.exists() and wx.MessageBox(
+                f'{final_m4b} already exists. Replace it?', 'Replace audiobook?',
+                wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING) != wx.YES:
+            return
         self.synthesis_in_progress = True
         file_path = self.selected_file_path
         voice = self.selected_voice.split(' ')[1]  # Remove the flag
@@ -541,7 +546,7 @@ class MainWindow(wx.Frame):
         self.core_thread = CoreThread(params=dict(
             file_path=file_path, voice=voice, pick_manually=False, speed=speed,
             output_folder=self.output_folder_text_ctrl.GetValue(),
-            selected_chapters=selected_chapters))
+            selected_chapters=selected_chapters, overwrite=True))
         self.core_thread.start()
 
     def on_open(self, event):

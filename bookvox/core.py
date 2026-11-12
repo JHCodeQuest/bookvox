@@ -5,6 +5,7 @@
 # by Claudio Santini 2025 - https://claudio.uk
 import ctypes
 import os
+import tempfile
 
 import torch.cuda
 import spacy
@@ -64,11 +65,15 @@ def set_espeak_library():
 
 
 def main(file_path, voice, pick_manually, speed, output_folder='.',
-         max_chapters=None, max_sentences=None, selected_chapters=None, post_event=None):
+         max_chapters=None, max_sentences=None, selected_chapters=None, post_event=None, overwrite=None):
     if post_event: post_event('CORE_STARTED')
-    load_spacy()
     if output_folder != '.':
         Path(output_folder).mkdir(parents=True, exist_ok=True)
+    final_m4b = Path(output_folder) / f'{Path(file_path).stem}.m4b'
+    if not confirm_overwrite(final_m4b, overwrite):
+        print(f'Not overwriting {final_m4b}. Pick a different output folder, or confirm the overwrite.')
+        return
+    load_spacy()
 
     filename = Path(file_path).name
 
@@ -150,8 +155,9 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
             chapter_wav_files.remove(chapter_wav_path)
 
     if has_ffmpeg:
-        create_index_file(title, creator, chapter_wav_files, output_folder, chapter_titles)
-        create_m4b(chapter_wav_files, filename, cover_image, output_folder)
+        with tempfile.TemporaryDirectory(prefix='bookvox_') as work:
+            chapters_path = create_index_file(title, creator, chapter_wav_files, work, chapter_titles)
+            create_m4b(chapter_wav_files, filename, cover_image, output_folder, chapters_path, overwrite=True)
         if post_event: post_event('CORE_FINISHED')
 
 
@@ -339,48 +345,66 @@ def concat_wavs_with_ffmpeg(chapter_files, output_folder, filename):
     return concat_file_path
 
 
-def create_m4b(chapter_files, filename, cover_image, output_folder):
-    concat_file_path = concat_wavs_with_ffmpeg(chapter_files, output_folder, filename)
+def create_m4b(chapter_files, filename, cover_image, output_folder, chapters_txt_path=None, overwrite=None):
     final_filename = Path(output_folder) / f'{Path(filename).stem}.m4b'
-    chapters_txt_path = Path(output_folder) / "chapters.txt"
+    if not confirm_overwrite(final_filename, overwrite):
+        return
+    chapters_txt_path = Path(chapters_txt_path or Path(output_folder) / "chapters.txt")
     print('Creating M4B file...')
 
-    if cover_image:
-        cover_file_path = Path(output_folder) / 'cover'
-        with open(cover_file_path, 'wb') as f:
-            f.write(cover_image)
-        cover_image_args = [
-            '-i', f'{cover_file_path}',
-            '-map', '2:v',  # Map cover image
-            '-disposition:v', 'attached_pic',  # Ensure cover is embedded
-            '-c:v', 'copy',  # Keep cover unchanged
-        ]
-    else:
-        cover_image_args = []
+    # Stage on the destination filesystem so a failed encode cannot damage the old audiobook.
+    with tempfile.TemporaryDirectory(prefix='bookvox_', dir=output_folder) as work:
+        concat_file_path = concat_wavs_with_ffmpeg(chapter_files, work, filename)
+        staged_filename = Path(work) / 'audiobook.m4b'
+        if cover_image:
+            cover_file_path = Path(work) / 'cover'
+            with open(cover_file_path, 'wb') as f:
+                f.write(cover_image)
+            cover_image_args = [
+                '-i', f'{cover_file_path}',
+                '-map', '2:v',  # Map cover image
+                '-disposition:v', 'attached_pic',  # Ensure cover is embedded
+                '-c:v', 'copy',  # Keep cover unchanged
+            ]
+        else:
+            cover_image_args = []
 
-    proc = subprocess.run([
-        'ffmpeg',
-        '-y',  # Overwrite output
-        
-        '-i', f'{concat_file_path}',  # Input audio
-        '-i', f'{chapters_txt_path}',  # Input chapters
-        *cover_image_args,  # Cover image (if provided)
+        proc = subprocess.run([
+            'ffmpeg',
+            '-y',  # Overwrite output
 
-        '-map', '0:a',  # Map audio
-        '-c:a', 'aac',  # Convert to AAC
-        '-b:a', '64k',  # Reduce bitrate for smaller size
+            '-i', f'{concat_file_path}',  # Input audio
+            '-i', f'{chapters_txt_path}',  # Input chapters
+            *cover_image_args,  # Cover image (if provided)
 
-        '-map_metadata', '1', # Map metadata
+            '-map', '0:a',  # Map audio
+            '-c:a', 'aac',  # Convert to AAC
+            '-b:a', '64k',  # Reduce bitrate for smaller size
 
-        '-f', 'mp4',  # Output as M4B
-        f'{final_filename}'  # Output file
-    ])
+            '-map_metadata', '1', # Map metadata
 
-    Path(concat_file_path).unlink(missing_ok=True)
-    if proc.returncode != 0:
-        raise RuntimeError(f'ffmpeg failed to create the m4b (exit code {proc.returncode})')
+            '-f', 'mp4',  # Output as M4B
+            f'{staged_filename}'  # Output file
+        ])
+        if proc.returncode != 0:
+            raise RuntimeError(f'ffmpeg failed to create the m4b (exit code {proc.returncode})')
+        os.replace(staged_filename, final_filename)
     print(f'{final_filename} created. Enjoy your audiobook.')
     print('Feel free to delete the intermediary .wav chapter files, the .m4b is all you need.')
+
+
+def confirm_overwrite(final_filename, overwrite=None):
+    """True when the audiobook may be written: never blocks for a non-existing file,
+    always allows an explicit overwrite, asks on the console otherwise."""
+    final_filename = Path(final_filename)
+    if not final_filename.exists() or overwrite:
+        return True
+    if overwrite is False:
+        return False
+    try:
+        return input(f'{final_filename} already exists. Overwrite it? [y/N] ').strip().lower() in ('y', 'yes')
+    except EOFError:
+        return False
 
 
 def probe_duration(file_name):
@@ -415,8 +439,10 @@ def escape_ffmetadata(text):
 
 def create_index_file(title, creator, chapter_mp3_files, output_folder, chapter_titles=None):
     chapter_titles = chapter_titles or {}
+    fd, chapters_path = tempfile.mkstemp(prefix='chapters_', suffix='.txt', dir=output_folder)
+    os.close(fd)
     # newline="\n": on Windows text mode would write \r\n, and the backslash that escapes a newline would escape the \r instead
-    with open(Path(output_folder) / "chapters.txt", "w", encoding="utf-8", newline="\n") as f:
+    with open(chapters_path, "w", encoding="utf-8", newline="\n") as f:
         f.write(f";FFMETADATA1\ntitle={escape_ffmetadata(title)}\nartist={escape_ffmetadata(creator)}\n\n")
         start = 0
         for i, c in enumerate(chapter_mp3_files, start=1):
@@ -425,6 +451,7 @@ def create_index_file(title, creator, chapter_mp3_files, output_folder, chapter_
             chapter_title = escape_ffmetadata(chapter_titles.get(c) or f'Chapter {i}')
             f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start}\nEND={end}\ntitle={chapter_title}\n\n")
             start = end
+    return Path(chapters_path)
 
 
 def unmark_element(element, stream=None):
