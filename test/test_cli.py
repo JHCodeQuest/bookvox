@@ -31,6 +31,21 @@ class CliTest(unittest.TestCase):
         self.assertIn('af_sky', out)
         self.assertIn('usage:', out)
 
+    def test_declined_replacement_exits_nonzero_and_preserves_audiobook(self):
+        final = self.tmp / 'mini.m4b'
+        final.write_bytes(b'keep the existing audiobook')
+        env = {**os.environ, 'PYTHONPATH': str(REPO), 'PYTHONIOENCODING': 'utf-8'}
+        for answer in ('n\n', ''):  # explicit refusal and EOF from unattended input
+            with self.subTest(answer=answer):
+                result = subprocess.run(
+                    [sys.executable, '-m', 'bookvox.cli', str(MINI_EPUB)],
+                    cwd=self.tmp, env=env, input=answer, capture_output=True,
+                    text=True, encoding='utf-8', timeout=60)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn('Conversion cancelled', result.stderr)
+                self.assertEqual(final.read_bytes(), b'keep the existing audiobook')
+                self.assertEqual([p.name for p in self.tmp.iterdir()], ['mini.m4b'])
+
     def test_epub(self):
         out = self.cli(MINI_EPUB)
         self.assertIn('Found cover image', out)
