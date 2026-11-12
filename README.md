@@ -71,6 +71,9 @@ It will first create a bunch of `book_chapter_1.wav`, `book_chapter_2.wav`, etc.
 and at the end it will produce a `book.m4b` file with the whole book you can listen with VLC or any
 audiobook player.
 It will only produce the `.m4b` file if you have `ffmpeg` installed on your machine.
+Chapter WAVs are reused only when their `.wav.sha256` sidecars match the narration inputs.
+Changing text or speed regenerates audio; older WAVs without sidecars are regenerated too.
+You can delete both the WAVs and their sidecars once the audiobook is complete.
 
 ## eSpeak library configuration
 
