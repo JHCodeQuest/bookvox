@@ -125,7 +125,7 @@ class ChapterTitlesTest(unittest.TestCase):
 @unittest.skipUnless(shutil.which('ffmpeg') and shutil.which('ffprobe'), 'ffmpeg not installed')
 class MainChapterTitlesTest(unittest.TestCase):
     def test_titles_stay_with_their_audio_when_a_chapter_in_the_middle_is_skipped(self):
-        from bookvox.core import find_document_chapters_and_extract_texts, main
+        from bookvox.core import create_m4b, find_document_chapters_and_extract_texts, main
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         book = epub.EpubBook()
@@ -151,7 +151,10 @@ class MainChapterTitlesTest(unittest.TestCase):
             main(str(path), 'af_sky', False, 1.0, str(out), selected_chapters=wanted)
             self.assertEqual(generate.call_count, 2)
             generate.reset_mock()
-            main(str(path), 'af_sky', False, 1.0, str(out), selected_chapters=wanted)
+            with patch('builtins.input', return_value='y'), \
+                    patch('bookvox.core.create_m4b', wraps=create_m4b) as export:
+                main(str(path), 'af_sky', False, 1.0, str(out), selected_chapters=wanted)
+                export.assert_called_once()
             generate.assert_not_called()
         self.assertEqual(m4b_tags(out / 'book.m4b')[1], ['First', 'Third'])
 
