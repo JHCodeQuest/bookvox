@@ -6,6 +6,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 import ebooklib
 import numpy as np
@@ -29,11 +30,6 @@ def m4b_tags(path):
                          capture_output=True, text=True, encoding='utf-8', check=True).stdout
     data = json.loads(out)
     return data['format']['tags'], [c['tags']['title'] for c in data['chapters']]
-
-
-def tiny_wav(path):
-    tone = (0.1 * np.sin(np.linspace(0, 2 * np.pi * 88, 4800))).astype('float32')  # 0.2 s at 24 kHz
-    soundfile.write(path, tone, 24000)
 
 
 @unittest.skipUnless(shutil.which('ffmpeg') and shutil.which('ffprobe'), 'ffmpeg not installed')
@@ -150,10 +146,13 @@ class MainChapterTitlesTest(unittest.TestCase):
         epub.write_epub(str(path), book)
         out = tmp / 'out'
         out.mkdir()
-        for i, name in ((1, 'ch1.xhtml'), (3, 'ch3.xhtml')):  # audio that already exists is not re-synthesised
-            tiny_wav(out / f'book_chapter_{i}_af_sky_{name}.wav')
         wanted = [c for c in find_document_chapters_and_extract_texts(epub.read_epub(str(path))) if c.get_name() in bodies]
-        main(str(path), 'af_sky', False, 1.0, str(out), selected_chapters=wanted)
+        with patch('bookvox.core.gen_audio_segments', return_value=[np.zeros(4800)]) as generate:
+            main(str(path), 'af_sky', False, 1.0, str(out), selected_chapters=wanted)
+            self.assertEqual(generate.call_count, 2)
+            generate.reset_mock()
+            main(str(path), 'af_sky', False, 1.0, str(out), selected_chapters=wanted)
+            generate.assert_not_called()
         self.assertEqual(m4b_tags(out / 'book.m4b')[1], ['First', 'Third'])
 
 

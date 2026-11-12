@@ -5,6 +5,9 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # lets the tests run from the repo root too
 from epub_factory import build_epub
@@ -108,6 +111,106 @@ class MainTest(unittest.TestCase):
     @optional_book('chinese')
     def test_chinese(self):
         self.convert_real_book('chinese', voice='zf_xiaobei')
+
+
+class AudioReuseTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.path = self.tmp / 'book.epub'
+        build_epub(self.path, [('ch01.xhtml', 'Original chapter text. ' * 10)])
+        self.chapter = epub.EpubHtml(title='Chapter', file_name='ch01.xhtml')
+        self.chapter.extracted_text = 'Original chapter text. ' * 10
+        self.chapter.chapter_index = 0
+        for name in ('load_spacy', 'set_espeak_library', 'KPipeline', 'create_index_file', 'create_m4b'):
+            mocker = patch(f'bookvox.core.{name}')
+            mocker.start()
+            self.addCleanup(mocker.stop)
+        mocker = patch('bookvox.core.gen_audio_segments', return_value=[np.zeros(2400)])
+        self.generate = mocker.start()
+        self.addCleanup(mocker.stop)
+        self.wav = self.tmp / 'book_chapter_1_af_sky_ch01.xhtml.wav'
+        self.fingerprint = self.wav.with_suffix('.wav.sha256')
+
+    def convert(self, **kwargs):
+        args = dict(file_path=str(self.path), voice='af_sky', pick_manually=False, speed=1.0,
+                    output_folder=str(self.tmp), selected_chapters=[self.chapter])
+        args.update(kwargs)
+        main(**args)
+
+    def test_matching_inputs_reuse_audio(self):
+        self.convert()
+        self.convert()
+        self.assertEqual(self.generate.call_count, 1)
+
+    def test_changed_speed_or_sentence_limit_regenerates_audio(self):
+        for changed in ({'speed': 1.5}, {'max_sentences': 1}):
+            with self.subTest(changed=changed):
+                self.convert()
+                self.generate.reset_mock()
+                self.convert(**changed)
+                self.generate.assert_called_once()
+
+    def test_gui_edited_text_regenerates_audio(self):
+        self.convert()
+        self.chapter.extracted_text = 'Edited chapter text. ' * 10
+        self.convert()
+        self.assertEqual(self.generate.call_count, 2)
+        self.assertIn(self.chapter.extracted_text, self.generate.call_args.args[1])
+
+    def test_changed_intro_regenerates_audio(self):
+        self.convert()
+        book = epub.read_epub(str(self.path))
+        book.add_author('New Author')
+        with patch('bookvox.core.epub.read_epub', return_value=book):
+            self.convert()
+        self.assertEqual(self.generate.call_count, 2)
+
+    def test_legacy_or_missing_or_invalid_sidecar_regenerates_audio(self):
+        self.wav.write_bytes(b'legacy audio')
+        self.convert()
+        for content in (None, b'wrong hash', b'\xff'):
+            with self.subTest(content=content):
+                if content is None:
+                    self.fingerprint.unlink()
+                else:
+                    self.fingerprint.write_bytes(content)
+                self.generate.reset_mock()
+                self.convert()
+                self.generate.assert_called_once()
+
+    def test_missing_wav_regenerates_audio(self):
+        self.convert()
+        self.wav.unlink()
+        self.convert()
+        self.assertEqual(self.generate.call_count, 2)
+
+    def test_changed_voice_generates_new_audio(self):
+        self.convert()
+        self.convert(voice='af_heart')
+        self.assertEqual(self.generate.call_count, 2)
+
+    def test_changed_sample_rate_regenerates_audio(self):
+        self.convert()
+        with patch('bookvox.core.sample_rate', 16000):
+            self.convert()
+        self.assertEqual(self.generate.call_count, 2)
+
+    def test_failed_write_invalidates_previous_fingerprint(self):
+        self.convert()
+        with patch('bookvox.core.soundfile.write', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                self.convert(speed=1.5)
+        self.assertFalse(self.fingerprint.exists())
+        self.convert()
+        self.assertEqual(self.generate.call_count, 3)
+
+    def test_empty_edited_chapter_does_not_reuse_old_audio(self):
+        self.convert()
+        self.chapter.extracted_text = ''
+        with patch('bookvox.core.create_m4b') as export:
+            self.convert()
+        self.assertEqual(export.call_args.args[0], [])
 
 
 if __name__ == '__main__':
