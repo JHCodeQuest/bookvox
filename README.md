@@ -48,6 +48,14 @@ sudo apt install ffmpeg espeak-ng                   # on Ubuntu/Debian 🐧
 pip install bookvox
 ```
 
+On Linux, `pip install bookvox` pulls the CUDA-enabled build of PyTorch (several GB of
+NVIDIA libraries) even if you have no GPU. If you don't plan to use CUDA, install the
+CPU-only build before running `pip install bookvox` for a much smaller install — the CI does the same:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
 ```bash
 brew install ffmpeg espeak-ng                       # on Mac 🍏
 pip install bookvox
@@ -64,6 +72,10 @@ and at the end it will produce a `book.m4b` file with the whole book you can lis
 audiobook player.
 It will only produce the `.m4b` file if you have `ffmpeg` installed on your machine.
 
+## eSpeak library configuration
+
+BookVox uses the eSpeak library and data configured by Misaki. To use a different library, set the `ESPEAK_LIBRARY` environment variable to the full path of the library file before starting BookVox. Remove the variable to restore the default. If the path is invalid, BookVox reports an error.
+
 ## Python versions
 
 bookvox supports Python 3.10 to 3.12.
@@ -77,8 +89,9 @@ pip install --ignore-requires-python bookvox
 ```
 
 What has been tested: Windows 11 with Python 3.13.13: install, imports, the unit tests and a full conversion.
-Not tested: Linux and macOS, where a dependency of `misaki[en]` (`curated-tokenizers`) may have no Python 3.13
-wheels. The flag applies to every package, so pip will not warn you about other version problems.
+An experimental CI workflow in pull request #40 has tested installation and a full conversion on
+Linux and macOS with Python 3.13. The flag applies to
+every package, so pip will not warn you about other version problems.
 
 ## How to run the GUI
 
