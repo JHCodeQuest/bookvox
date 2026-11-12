@@ -66,13 +66,14 @@ def set_espeak_library():
 
 def main(file_path, voice, pick_manually, speed, output_folder='.',
          max_chapters=None, max_sentences=None, selected_chapters=None, post_event=None, overwrite=None):
+    """Convert a book; return False when audiobook replacement is declined."""
     if post_event: post_event('CORE_STARTED')
     if output_folder != '.':
         Path(output_folder).mkdir(parents=True, exist_ok=True)
     final_m4b = Path(output_folder) / f'{Path(file_path).stem}.m4b'
     if not confirm_overwrite(final_m4b, overwrite):
         print(f'Not overwriting {final_m4b}. Pick a different output folder, or confirm the overwrite.')
-        return
+        return False
     load_spacy()
 
     filename = Path(file_path).name
@@ -157,7 +158,8 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
     if has_ffmpeg:
         with tempfile.TemporaryDirectory(prefix='bookvox_') as work:
             chapters_path = create_index_file(title, creator, chapter_wav_files, work, chapter_titles)
-            create_m4b(chapter_wav_files, filename, cover_image, output_folder, chapters_path, overwrite=True)
+            if create_m4b(chapter_wav_files, filename, cover_image, output_folder, chapters_path, overwrite=True) is False:
+                return False
         if post_event: post_event('CORE_FINISHED')
 
 
@@ -348,7 +350,7 @@ def concat_wavs_with_ffmpeg(chapter_files, output_folder, filename):
 def create_m4b(chapter_files, filename, cover_image, output_folder, chapters_txt_path=None, overwrite=None):
     final_filename = Path(output_folder) / f'{Path(filename).stem}.m4b'
     if not confirm_overwrite(final_filename, overwrite):
-        return
+        return False
     chapters_txt_path = Path(chapters_txt_path or Path(output_folder) / "chapters.txt")
     print('Creating M4B file...')
 

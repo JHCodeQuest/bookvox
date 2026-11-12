@@ -70,11 +70,11 @@ class CreateM4bFilenamesTest(unittest.TestCase):
         (self.tmp / 'Book.m4b').write_bytes(b'old audiobook')
         before = {p.name: p.read_bytes() for p in self.tmp.iterdir()}
         with patch('builtins.input', return_value='n'), patch('bookvox.core.subprocess.run') as run:
-            create_m4b(chapters, book.name, b'', self.tmp)
+            self.assertIs(create_m4b(chapters, book.name, b'', self.tmp), False)
             run.assert_not_called()
         self.assertEqual({p.name: p.read_bytes() for p in self.tmp.iterdir()}, before)
         with patch('builtins.input', return_value='n'), patch('bookvox.core.load_spacy') as load:
-            main(str(book), 'af_sky', False, 1.0, str(self.tmp))
+            self.assertIs(main(str(book), 'af_sky', False, 1.0, str(self.tmp)), False)
             load.assert_not_called()
 
     def test_failed_replacement_preserves_existing_audiobook(self):
