@@ -11,6 +11,7 @@ It checks that the window builds, that a failing conversion unlocks the window a
 """
 import shutil, sys, tempfile, time, traceback
 from pathlib import Path
+from unittest.mock import patch
 
 SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / 'epub' / 'mini.epub'
 WAIT = 420  # seconds to wait for a conversion to report back
@@ -64,6 +65,22 @@ def run_case(label, break_book):
     check(label + ': an outcome event reached the window', pump(lambda: len(dialogs) > d0 or len(opened_folders) > o0, WAIT))
     return out, d0, o0
 
+
+try:
+    which = shutil.which
+    with patch('bookvox.core.shutil.which', side_effect=lambda name: None if name == 'ffmpeg' else which(name)):
+        out, d0, o0 = run_case('missing_ffmpeg', break_book=False)
+        frame.core_thread.join(timeout=5)
+    check('missing ffmpeg: error dialog explains the missing dependency',
+          len(dialogs) > d0 and 'ffmpeg not found' in str(dialogs[-1][0]))
+    check('missing ffmpeg: window unlocked again', frame.synthesis_in_progress is False
+          and frame.start_button.IsEnabled() and frame.params_panel.IsEnabled()
+          and frame.table.HasCheckBoxes())
+    check('missing ffmpeg: not reported as finished', len(opened_folders) == o0)
+    check('missing ffmpeg: synthesis did not produce files', not out.exists())
+except Exception:
+    traceback.print_exc()
+    check('missing ffmpeg path ran without a harness error', False)
 
 try:
     out, d0, o0 = run_case('broken', break_book=True)

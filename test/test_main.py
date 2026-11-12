@@ -5,6 +5,9 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
+
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # lets the tests run from the repo root too
 from epub_factory import build_epub
@@ -108,6 +111,34 @@ class MainTest(unittest.TestCase):
     @optional_book('chinese')
     def test_chinese(self):
         self.convert_real_book('chinese', voice='zf_xiaobei')
+
+
+class MissingFfmpegTest(unittest.TestCase):
+    def test_gui_fails_before_loading_models_or_reading_book(self):
+        events = Mock()
+        with patch('bookvox.core.shutil.which', return_value=None), \
+                patch('bookvox.core.load_spacy') as load, \
+                patch('bookvox.core.epub.read_epub') as read:
+            with self.assertRaisesRegex(RuntimeError, 'ffmpeg not found.*PATH'):
+                main('unused.epub', 'af_sky', False, 1.0, post_event=events)
+        events.assert_called_once_with('CORE_STARTED')
+        load.assert_not_called()
+        read.assert_not_called()
+
+    def test_cli_still_produces_wav_only_without_ffmpeg(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        path = tmp / 'book.epub'
+        build_epub(path, [('ch01.xhtml', 'Enough text for a chapter. ' * 10)])
+        with patch('bookvox.core.shutil.which', return_value=None), \
+                patch('bookvox.core.load_spacy'), patch('bookvox.core.set_espeak_library'), \
+                patch('bookvox.core.KPipeline'), \
+                patch('bookvox.core.gen_audio_segments', return_value=[np.zeros(2400)]), \
+                patch('bookvox.core.create_m4b') as export:
+            main(str(path), 'af_sky', False, 1.0, str(tmp), max_chapters=1)
+        self.assertTrue((tmp / 'book_chapter_1_af_sky_ch01.xhtml.wav').exists())
+        self.assertFalse((tmp / 'book.m4b').exists())
+        export.assert_not_called()
 
 
 if __name__ == '__main__':

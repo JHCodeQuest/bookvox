@@ -6,6 +6,8 @@ v0.4.9. Versions before 0.5.0 are upstream's. The format follows [Keep a Changel
 ## Unreleased
 
 ### Fixed
+- Missing FFmpeg now fails before GUI synthesis starts, showing an error and unlocking
+  the controls instead of leaving the window stuck. CLI WAV-only output is unchanged.
 - Books whose table of contents has a single entry crashed the conversion with
   `TypeError: 'Link' object is not iterable` in `find_toc_titles` (found by the new synthetic-epub tests).
 - The eSpeak library comes from Misaki's bundled copy instead of fragile system-path globs;
