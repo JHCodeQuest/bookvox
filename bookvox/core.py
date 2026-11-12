@@ -4,6 +4,8 @@
 # Kokoro-82M model for high-quality text-to-speech synthesis.
 # by Claudio Santini 2025 - https://claudio.uk
 import ctypes
+import hashlib
+import json
 import os
 
 import torch.cuda
@@ -116,22 +118,30 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
     for i, chapter in enumerate(selected_chapters, start=1):
         if max_chapters and i > max_chapters: break
         text = chapter.extracted_text
+        if len(text.strip()) < 10:
+            print(f'Skipping empty chapter {i}')
+            continue
+        if i == 1:
+            text = intro + text
         xhtml_file_name = chapter.get_name().replace(' ', '_').replace('/', '_').replace('\\', '_')
         chapter_wav_path = Path(output_folder) / f'{Path(filename).stem}_chapter_{i}_{voice}_{xhtml_file_name}.wav'
         chapter_wav_files.append(chapter_wav_path)
         chapter_titles[chapter_wav_path] = toc_titles.get(chapter.get_name())
-        if Path(chapter_wav_path).exists():
-            print(f'File for chapter {i} already exists. Skipping')
-            stats.processed_chars += len(text)
+        fingerprint_path = chapter_wav_path.with_suffix('.wav.sha256')
+        fingerprint = hashlib.sha256(json.dumps(
+            [text, voice, speed, max_sentences, sample_rate], ensure_ascii=False).encode('utf-8')).hexdigest()
+        try:
+            saved_fingerprint = fingerprint_path.read_text(encoding='ascii')
+        except (OSError, UnicodeError):
+            saved_fingerprint = None
+        if chapter_wav_path.exists() and saved_fingerprint == fingerprint:
+            print(f'Audio inputs for chapter {i} match. Reusing existing audio')
+            stats.processed_chars += len(chapter.extracted_text)
             if post_event:
                 post_event('CORE_CHAPTER_FINISHED', chapter_index=chapter.chapter_index)
             continue
-        if len(text.strip()) < 10:
-            print(f'Skipping empty chapter {i}')
-            chapter_wav_files.remove(chapter_wav_path)
-            continue
-        if i == 1:
-            text = intro + text
+        # Invalidate before writing audio so an interrupted replacement cannot be reused.
+        fingerprint_path.unlink(missing_ok=True)
         start_time = time.time()
         if post_event: post_event('CORE_CHAPTER_STARTED', chapter_index=chapter.chapter_index)
         audio_segments = gen_audio_segments(
@@ -139,6 +149,7 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
         if audio_segments:
             final_audio = np.concatenate(audio_segments)
             soundfile.write(chapter_wav_path, final_audio, sample_rate)
+            fingerprint_path.write_text(fingerprint, encoding='ascii')
             end_time = time.time()
             delta_seconds = end_time - start_time
             chars_per_sec = len(text) / delta_seconds
