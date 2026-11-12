@@ -40,7 +40,7 @@ jobs:
         run: pip install .
       - name: Run the unit tests
         working-directory: test
-        run: python -m unittest test_cli test_concat test_imports test_chapters test_espeak_library -v
+        run: python -m unittest test_cli test_concat test_imports test_chapters test_espeak_library test_find_chapters test_main -v
       - name: Check the tests left no files behind in the repo
         shell: bash
         run: |
