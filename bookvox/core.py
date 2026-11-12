@@ -66,6 +66,9 @@ def set_espeak_library():
 def main(file_path, voice, pick_manually, speed, output_folder='.',
          max_chapters=None, max_sentences=None, selected_chapters=None, post_event=None):
     if post_event: post_event('CORE_STARTED')
+    # The GUI requires an m4b; its worker reports exceptions through CORE_FAILED.
+    if post_event and shutil.which('ffmpeg') is None:
+        raise RuntimeError('ffmpeg not found. Install FFmpeg and make it available on PATH, then try again.')
     load_spacy()
     if output_folder != '.':
         Path(output_folder).mkdir(parents=True, exist_ok=True)
