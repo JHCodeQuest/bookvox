@@ -3,6 +3,13 @@
 Bookvox is a fork of [audiblez](https://github.com/santinic/audiblez) by Claudio Santini and continues from its
 v0.4.9. Versions before 0.5.0 are upstream's. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## Unreleased
+
+### Fixed
+- The eSpeak library comes from Misaki's bundled copy instead of fragile system-path globs;
+  `ESPEAK_LIBRARY` overrides it, and a missing or unloadable library fails fast with a clear
+  error that names the override (#11).
+
 ## 0.5.3 - 2026-11-03
 
 First release published from GitHub Actions with PyPI Trusted Publishing (no API token).

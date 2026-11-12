@@ -3,6 +3,7 @@
 # bookvox - A program to convert e-books into audiobooks using
 # Kokoro-82M model for high-quality text-to-speech synthesis.
 # by Claudio Santini 2025 - https://claudio.uk
+import ctypes
 import os
 
 import torch.cuda
@@ -47,6 +48,13 @@ def set_espeak_library():
                 f"ESPEAK_LIBRARY points to a missing file: {library}. "
                 "Set it to an eSpeak NG library or remove the override."
             )
+        try:
+            ctypes.CDLL(str(path))
+        except OSError as error:
+            raise RuntimeError(
+                f"ESPEAK_LIBRARY points to a library that cannot be loaded: {library} ({error}). "
+                "Set it to a valid eSpeak NG library or remove the override."
+            ) from None
         EspeakWrapper.set_library(str(path.resolve()))
 
     print('Using espeak library:', EspeakWrapper.library())

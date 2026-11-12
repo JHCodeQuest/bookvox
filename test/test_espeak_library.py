@@ -1,4 +1,5 @@
 import os
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -27,6 +28,17 @@ class EspeakLibraryTests(unittest.TestCase):
         with patch.dict(os.environ, {"ESPEAK_LIBRARY": "missing-espeak-library"}):
             with self.assertRaisesRegex(RuntimeError, "ESPEAK_LIBRARY"):
                 set_espeak_library()
+
+    def test_unloadable_override_fails(self):
+        handle, junk = tempfile.mkstemp(suffix='.dll')
+        with os.fdopen(handle, 'w') as f:
+            f.write('not a library')
+        try:
+            with patch.dict(os.environ, {"ESPEAK_LIBRARY": junk}):
+                with self.assertRaisesRegex(RuntimeError, "ESPEAK_LIBRARY"):
+                    set_espeak_library()
+        finally:
+            os.unlink(junk)
 
 
 if __name__ == "__main__":

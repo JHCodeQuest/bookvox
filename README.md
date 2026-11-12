@@ -48,6 +48,14 @@ sudo apt install ffmpeg espeak-ng                   # on Ubuntu/Debian 🐧
 pip install bookvox
 ```
 
+On Linux, `pip install bookvox` pulls the CUDA-enabled build of PyTorch (several GB of
+NVIDIA libraries) even if you have no GPU. If you don't plan to use CUDA, install the
+CPU-only build first for a much smaller install — the CI does the same:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
 ```bash
 brew install ffmpeg espeak-ng                       # on Mac 🍏
 pip install bookvox
@@ -81,8 +89,9 @@ pip install --ignore-requires-python bookvox
 ```
 
 What has been tested: Windows 11 with Python 3.13.13: install, imports, the unit tests and a full conversion.
-Not tested: Linux and macOS, where a dependency of `misaki[en]` (`curated-tokenizers`) may have no Python 3.13
-wheels. The flag applies to every package, so pip will not warn you about other version problems.
+Linux and macOS with Python 3.13 are covered by an experimental CI job (install and a full conversion
+on ubuntu-latest and macos-latest, allowed to fail so it does not gate merges). The flag applies to
+every package, so pip will not warn you about other version problems.
 
 ## How to run the GUI
 
