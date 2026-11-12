@@ -3,9 +3,8 @@
 # bookvox - A program to convert e-books into audiobooks using
 # Kokoro-82M model for high-quality text-to-speech synthesis.
 # by Claudio Santini 2025 - https://claudio.uk
+import ctypes
 import os
-import traceback
-from glob import glob
 
 import torch.cuda
 import spacy
@@ -38,36 +37,30 @@ def load_spacy():
 
 
 def set_espeak_library():
-    """Find the espeak library path"""
-    try:
+    """Use Misaki's bundled eSpeak library, unless an override is supplied."""
+    import espeakng_loader
+    from phonemizer.backend.espeak.wrapper import EspeakWrapper
 
-        if os.environ.get('ESPEAK_LIBRARY'):
-            library = os.environ['ESPEAK_LIBRARY']
-        elif platform.system() == 'Darwin':
-            from subprocess import check_output
-            try:
-                cellar = Path(check_output(["brew", "--cellar"], text=True).strip())
-                pattern = cellar / "espeak-ng" / "*" / "lib" / "*.dylib"
-                if not (library := next(iter(glob(str(pattern))), None)):
-                    raise RuntimeError("No espeak-ng library found; please set the path manually")
-            except (subprocess.CalledProcessError, FileNotFoundError) as e:
-                raise RuntimeError("Cannot locate Homebrew Cellar. Is 'brew' installed and in PATH?") from e
-        elif platform.system() == 'Linux':
-            library = glob('/usr/lib/*/libespeak-ng*')[0]
-        elif platform.system() == 'Windows':
-            library = 'C:\\Program Files*\\eSpeak NG\\libespeak-ng.dll'
-        else:
-            print('Unsupported OS, please set the espeak library path manually')
-            return
-        print('Using espeak library:', library)
-        from phonemizer.backend.espeak.wrapper import EspeakWrapper
-        EspeakWrapper.set_library(library)
-    except Exception:
-        traceback.print_exc()
-        print("Error finding espeak-ng library:")
-        print("Probably you haven't installed espeak-ng.")
-        print("On Mac: brew install espeak-ng")
-        print("On Linux: sudo apt install espeak-ng")
+    library = os.environ.get('ESPEAK_LIBRARY')
+    if library:
+        path = Path(library).expanduser()
+        if not path.is_file():
+            raise RuntimeError(
+                f"ESPEAK_LIBRARY points to a missing file: {library}. "
+                "Set it to an eSpeak NG library or remove the override."
+            )
+        try:
+            ctypes.CDLL(str(path.resolve()))
+        except OSError as error:
+            raise RuntimeError(
+                f"ESPEAK_LIBRARY points to a library that cannot be loaded: {library} ({error}). "
+                "Set it to a valid eSpeak NG library or remove the override."
+            ) from None
+        EspeakWrapper.set_library(str(path.resolve()))
+    else:
+        EspeakWrapper.set_library(espeakng_loader.get_library_path())
+
+    print('Using espeak library:', EspeakWrapper.library())
 
 
 def main(file_path, voice, pick_manually, speed, output_folder='.',
