@@ -70,6 +70,9 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
          max_chapters=None, max_sentences=None, selected_chapters=None, post_event=None, overwrite=None):
     """Convert a book; return False when audiobook replacement is declined."""
     if post_event: post_event('CORE_STARTED')
+    # The GUI requires an m4b; its worker reports exceptions through CORE_FAILED.
+    if post_event and shutil.which('ffmpeg') is None:
+        raise RuntimeError('ffmpeg not found. Install FFmpeg and make it available on PATH, then try again.')
     if output_folder != '.':
         Path(output_folder).mkdir(parents=True, exist_ok=True)
     final_m4b = audiobook_path(output_folder, file_path)
