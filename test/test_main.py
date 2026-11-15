@@ -131,6 +131,11 @@ class AudioReuseTest(unittest.TestCase):
         self.addCleanup(mocker.stop)
         self.wav = self.tmp / 'book_chapter_1_af_sky_ch01.xhtml.wav'
         self.fingerprint = self.wav.with_suffix('.wav.sha256')
+        chapter2 = epub.EpubHtml(title='Chapter 2', file_name='ch02.xhtml')
+        chapter2.extracted_text = 'Second chapter text. ' * 10
+        chapter2.chapter_index = 1
+        self.chapter2 = chapter2
+        self.wav2 = self.tmp / 'book_chapter_2_af_sky_ch02.xhtml.wav'
 
     def convert(self, **kwargs):
         args = dict(file_path=str(self.path), voice='af_sky', pick_manually=False, speed=1.0,
@@ -142,6 +147,44 @@ class AudioReuseTest(unittest.TestCase):
         self.convert()
         self.convert()
         self.assertEqual(self.generate.call_count, 1)
+
+    def test_partial_reuse_run_reaches_100_percent(self):
+        def account_sentences(pipeline, text, voice, speed, stats=None,
+                              max_sentences=None, post_event=None):
+            # mimic gen_audio_segments' accounting: the chunks partition text exactly,
+            # like spaCy sentences do, so processed sums to len(text)
+            for i in range(0, len(text), 100):
+                if stats:
+                    stats.processed_chars += len(text[i:i + 100])
+                    stats.progress = min(100, stats.processed_chars * 100 // stats.total_chars)
+                    if post_event:
+                        post_event('CORE_PROGRESS', stats=stats)
+            return [np.zeros(2400)]
+
+        self.generate.side_effect = account_sentences
+        self.convert(selected_chapters=[self.chapter, self.chapter2])
+        self.assertTrue(self.wav2.exists())
+        self.wav2.unlink()  # run 2 must reuse chapter 1 but re-synthesize chapter 2
+        self.generate.reset_mock()
+        events = []
+        self.convert(selected_chapters=[self.chapter, self.chapter2],
+                     post_event=lambda name, **kw: events.append((name, kw)))
+
+        progress = [kw['stats'].progress for name, kw in events if name == 'CORE_PROGRESS']
+        self.assertTrue(progress, 'no CORE_PROGRESS events: chapter 2 was not re-synthesized')
+        # the first progress already includes chapter 1's reused chars: the reuse `continue`
+        # added len(chapter.extracted_text) without any synthesis (processed >= 230 here)
+        first = next(kw['stats'] for name, kw in events if name == 'CORE_PROGRESS')
+        self.assertGreaterEqual(first.processed_chars, len(self.chapter.extracted_text))
+        # the intro is in neither total nor processed on a reused-chapter-1 run: it was
+        # never narrated, so the denominator is exactly the two chapters' text
+        stats = events[-1][1]['stats']
+        self.assertEqual(stats.total_chars,
+                         len(self.chapter.extracted_text) + len(self.chapter2.extracted_text))  # 440, not 455
+        self.assertEqual(stats.processed_chars, stats.total_chars)
+        self.assertEqual(progress[-1], 100)  # an intro-in-total regression would end at 96 and stall the bar
+        self.assertEqual(self.generate.call_count, 1)  # only chapter 2 was synthesized
+        self.assertEqual(self.generate.call_args.args[1], self.chapter2.extracted_text)  # no intro prefix
 
     def test_changed_speed_or_sentence_limit_regenerates_audio(self):
         for changed in ({'speed': 1.5}, {'max_sentences': 1}):
