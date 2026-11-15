@@ -522,7 +522,8 @@ class MainWindow(wx.Frame):
         self.preview_threads.append(thread)
 
     def on_start(self, event):
-        final_m4b = Path(self.output_folder_text_ctrl.GetValue()) / f'{Path(self.selected_file_path).stem}.m4b'
+        from bookvox.core import audiobook_path
+        final_m4b = audiobook_path(self.output_folder_text_ctrl.GetValue(), self.selected_file_path)
         if final_m4b.exists() and wx.MessageBox(
                 f'{final_m4b} already exists. Replace it?', 'Replace audiobook?',
                 wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING) != wx.YES:

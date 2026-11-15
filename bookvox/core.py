@@ -70,7 +70,7 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
     if post_event: post_event('CORE_STARTED')
     if output_folder != '.':
         Path(output_folder).mkdir(parents=True, exist_ok=True)
-    final_m4b = Path(output_folder) / f'{Path(file_path).stem}.m4b'
+    final_m4b = audiobook_path(output_folder, file_path)
     if not confirm_overwrite(final_m4b, overwrite):
         print(f'Not overwriting {final_m4b}. Pick a different output folder, or confirm the overwrite.')
         return False
@@ -158,8 +158,7 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
     if has_ffmpeg:
         with tempfile.TemporaryDirectory(prefix='bookvox_') as work:
             chapters_path = create_index_file(title, creator, chapter_wav_files, work, chapter_titles)
-            if create_m4b(chapter_wav_files, filename, cover_image, output_folder, chapters_path, overwrite=True) is False:
-                return False
+            create_m4b(chapter_wav_files, filename, cover_image, output_folder, chapters_path, overwrite=True)
         if post_event: post_event('CORE_FINISHED')
 
 
@@ -347,8 +346,13 @@ def concat_wavs_with_ffmpeg(chapter_files, output_folder, filename):
     return concat_file_path
 
 
+def audiobook_path(folder, file_path):
+    """The final .m4b file a conversion of file_path into folder produces."""
+    return Path(folder) / f'{Path(file_path).stem}.m4b'
+
+
 def create_m4b(chapter_files, filename, cover_image, output_folder, chapters_txt_path=None, overwrite=None):
-    final_filename = Path(output_folder) / f'{Path(filename).stem}.m4b'
+    final_filename = audiobook_path(output_folder, filename)
     if not confirm_overwrite(final_filename, overwrite):
         return False
     chapters_txt_path = Path(chapters_txt_path or Path(output_folder) / "chapters.txt")
