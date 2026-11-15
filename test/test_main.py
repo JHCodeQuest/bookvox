@@ -178,7 +178,7 @@ class AudioReuseTest(unittest.TestCase):
         self.assertGreaterEqual(first.processed_chars, len(self.chapter.extracted_text))
         # the intro is in neither total nor processed on a reused-chapter-1 run: it was
         # never narrated, so the denominator is exactly the two chapters' text
-        stats = events[-1][1]['stats']
+        stats = [kw['stats'] for name, kw in events if name == 'CORE_PROGRESS'][-1]
         self.assertEqual(stats.total_chars,
                          len(self.chapter.extracted_text) + len(self.chapter2.extracted_text))  # 440, not 455
         self.assertEqual(stats.processed_chars, stats.total_chars)
