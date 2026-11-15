@@ -36,7 +36,8 @@ def cli_main():
             print('CUDA GPU not available. Defaulting to CPU')
 
     from bookvox.core import main
-    main(args.epub_file_path, args.voice, args.pick, args.speed, args.output)
+    if main(args.epub_file_path, args.voice, args.pick, args.speed, args.output) is False:
+        parser.exit(1, 'Conversion cancelled; existing audiobook was not replaced.\n')
 
 
 if __name__ == '__main__':

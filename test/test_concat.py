@@ -1,12 +1,15 @@
 import shutil
+import io
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 import numpy as np
 import soundfile
+from PIL import Image
 
-from bookvox.core import create_m4b
+from bookvox.core import create_index_file, create_m4b, main
 
 BOOK_BYTES = b'not really an epub, but it must survive'
 
@@ -46,3 +49,47 @@ class CreateM4bFilenamesTest(unittest.TestCase):
         # A corrupt cover makes the second ffmpeg call fail after the first one has succeeded.
         with self.assertRaises(RuntimeError):
             create_m4b(chapters, book.name, b'this is not an image', str(self.tmp))
+
+    def test_export_preserves_unrelated_files(self):
+        book, chapters = self.make_book_and_chapters('Book.epub', ['a.wav', 'b.wav'])
+        sentinels = ['chapters.txt', 'cover', 'Book.tmp.mp4', 'Book_wav_list.txt']
+        before = {name: (self.tmp / name).read_bytes() if (self.tmp / name).exists() else b'keep me'
+                  for name in sentinels}
+        for name, content in before.items():
+            (self.tmp / name).write_bytes(content)
+        image = io.BytesIO()
+        Image.new('RGB', (16, 16), 'red').save(image, format='PNG')
+        path = create_index_file('Book', 'Author', chapters, self.tmp)
+        create_m4b(chapters, book.name, image.getvalue(), self.tmp, path)
+        for name, content in before.items():
+            self.assertEqual((self.tmp / name).read_bytes(), content)
+        self.assertFalse(list(self.tmp.glob('bookvox_*')))
+
+    def test_declining_overwrite_leaves_everything_unchanged(self):
+        book, chapters = self.make_book_and_chapters('Book.epub', ['a.wav'])
+        (self.tmp / 'Book.m4b').write_bytes(b'old audiobook')
+        before = {p.name: p.read_bytes() for p in self.tmp.iterdir()}
+        with patch('builtins.input', return_value='n'), patch('bookvox.core.subprocess.run') as run:
+            self.assertIs(create_m4b(chapters, book.name, b'', self.tmp), False)
+            run.assert_not_called()
+        self.assertEqual({p.name: p.read_bytes() for p in self.tmp.iterdir()}, before)
+        with patch('builtins.input', return_value='n'), patch('bookvox.core.load_spacy') as load:
+            self.assertIs(main(str(book), 'af_sky', False, 1.0, str(self.tmp)), False)
+            load.assert_not_called()
+
+    def test_failed_replacement_preserves_existing_audiobook(self):
+        book, chapters = self.make_book_and_chapters('Book.epub', ['a.wav'])
+        final = self.tmp / 'Book.m4b'
+        final.write_bytes(b'old audiobook')
+        with patch('builtins.input', return_value='yes'), self.assertRaises(RuntimeError):
+            create_m4b(chapters, book.name, b'invalid image', self.tmp)
+        self.assertEqual(final.read_bytes(), b'old audiobook')
+        self.assertFalse(list(self.tmp.glob('bookvox_*')))
+
+    def test_confirmed_replacement_succeeds(self):
+        book, chapters = self.make_book_and_chapters('Book.epub', ['a.wav'])
+        final = self.tmp / 'Book.m4b'
+        final.write_bytes(b'old audiobook')
+        with patch('builtins.input', return_value='y'):
+            create_m4b(chapters, book.name, b'', self.tmp)
+        self.assertNotEqual(final.read_bytes(), b'old audiobook')
