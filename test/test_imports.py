@@ -1,4 +1,6 @@
 import ast
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -32,3 +34,9 @@ class ImportsTest(unittest.TestCase):
                         and node.value.id == 'wx' and node.attr in deprecated):
                     found.append(f'{path.name}:{node.lineno} uses wx.{node.attr}, use {deprecated[node.attr]}')
         self.assertEqual(found, [])
+
+    def test_importing_the_package_leaves_sys_path_alone(self):
+        """__init__.py used to append its own folder to sys.path, which hides import mistakes."""
+        code = 'import sys; before = list(sys.path); import bookvox; print(sys.path == before)'
+        out = subprocess.run([sys.executable, '-c', code], cwd=PACKAGE_DIR.parent, capture_output=True, text=True)
+        self.assertEqual(out.stdout.strip(), 'True', out.stderr[-500:])
