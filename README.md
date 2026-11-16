@@ -81,20 +81,12 @@ BookVox uses the eSpeak library and data configured by Misaki. To use a differen
 
 ## Python versions
 
-bookvox supports Python 3.10 to 3.12.
+bookvox supports Python 3.10 to 3.13. It uses the BookVox-maintained `bookvox-kokoro` and
+`bookvox-misaki` distributions; their Python import names remain `kokoro` and `misaki`.
+CI tests installation and a full conversion with Python 3.13 on Linux and macOS.
 
-Python 3.13 is not officially supported yet. The PyPI releases of two dependencies, `kokoro` and `misaki`,
-still say `Requires-Python <3.13`, although their source already allows 3.13. Progress is tracked in
-[issue 15](https://github.com/JHCodeQuest/bookvox/issues/15). If you want to try it anyway:
-
-```bash
-pip install --ignore-requires-python bookvox
-```
-
-What has been tested: Windows 11 with Python 3.13.13: install, imports, the unit tests and a full conversion.
-An experimental CI workflow in pull request #40 has tested installation and a full conversion on
-Linux and macOS with Python 3.13. The flag applies to
-every package, so pip will not warn you about other version problems.
+Python 3.14 is not supported yet and remains untested; that part is tracked in
+[issue 1](https://github.com/JHCodeQuest/bookvox/issues/1).
 
 ## How to run the GUI
 
