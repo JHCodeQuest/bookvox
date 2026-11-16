@@ -5,6 +5,11 @@ v0.4.9. Versions before 0.5.0 are upstream's. The format follows [Keep a Changel
 
 ## Unreleased
 
+### Added
+- Python 3.13 support through the maintained `bookvox-kokoro` and `bookvox-misaki` packages;
+  installation no longer needs `--ignore-requires-python`, and the 3.13 CI job is now gating.
+  Python 3.14 remains excluded until its dependencies are tested (#1).
+
 ### Fixed
 - Chapter audio is reused only when its saved synthesis inputs match, including speed,
   narrated text, voice and sentence limit. Existing WAVs without a fingerprint are regenerated.

@@ -1,8 +1,7 @@
-name: Python 3.13 (experimental)
+name: Python 3.13
 
-# kokoro and misaki on PyPI still say "Requires-Python <3.13" (issues #1, #15), so this installs with
-# --ignore-requires-python. The job is allowed to fail: it tells us whether 3.13 works on Linux and macOS,
-# it does not gate merges. Look at the job's steps, not just the PR checks list, to see the result.
+# Normal installation resolves the maintained bookvox-kokoro/bookvox-misaki releases (#1).
+# Python 3.14 remains untested and is still excluded by requires-python.
 on:
   pull_request:
   push:
@@ -13,7 +12,6 @@ permissions:
 
 jobs:
   python-3-13:
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -33,8 +31,8 @@ jobs:
       - name: Install CPU-only torch (Linux)  # the default Linux torch pulls in CUDA libraries and fills the runner disk
         if: runner.os == 'Linux'
         run: pip install torch --index-url https://download.pytorch.org/whl/cpu
-      - name: Install bookvox, ignoring the Python version cap
-        run: pip install --ignore-requires-python .
+      - name: Install bookvox
+        run: pip install .
       - name: Check it runs as script
         run: bookvox --help
       - name: Download test epub
