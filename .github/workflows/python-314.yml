@@ -3,7 +3,8 @@ name: Python 3.14 (experimental)
 # Diagnostic job for issue #1: dependencies still declare <3.14, so install with the cap ignored.
 # continue-on-error keeps this from gating until the dependency wheels are verified.
 on:
-  workflow_dispatch
+  workflow_dispatch:
+  pull_request
 
 permissions:
   contents: read
